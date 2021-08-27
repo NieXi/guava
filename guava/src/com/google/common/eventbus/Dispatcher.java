@@ -97,8 +97,8 @@ abstract class Dispatcher {
     void dispatch(Object event, Iterator<Subscriber> subscribers) {
       checkNotNull(event);
       checkNotNull(subscribers);
-      Queue<Event> queueForThread = queue.get();
-      queueForThread.offer(new Event(event, subscribers));
+      Queue<Event> queueForThread = queue.get();// 获取线程独立的 queue
+      queueForThread.offer(new Event(event, subscribers));//
 
       if (!dispatching.get()) {
         dispatching.set(true);

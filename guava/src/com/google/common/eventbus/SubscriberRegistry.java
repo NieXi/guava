@@ -73,7 +73,7 @@ final class SubscriberRegistry {
   }
 
   /** Registers all subscriber methods on the given listener object. */
-  void register(Object listener) {
+  void register(Object listener) {// 反射解析 listener 中的用 subscribe 注解的方法，加了缓存
     Multimap<Class<?>, Subscriber> listenerMethods = findAllSubscribers(listener);
 
     for (Entry<Class<?>, Collection<Subscriber>> entry : listenerMethods.asMap().entrySet()) {
@@ -154,7 +154,7 @@ final class SubscriberRegistry {
               new CacheLoader<Class<?>, ImmutableList<Method>>() {
                 @Override
                 public ImmutableList<Method> load(Class<?> concreteClass) throws Exception {
-                  return getAnnotatedMethodsNotCached(concreteClass);
+                  return getAnnotatedMethodsNotCached(concreteClass);// 反射获取类中用 subscribe 注解的方法
                 }
               });
 
@@ -189,14 +189,14 @@ final class SubscriberRegistry {
         if (method.isAnnotationPresent(Subscribe.class) && !method.isSynthetic()) {
           // TODO(cgdecker): Should check for a generic parameter type and error out
           Class<?>[] parameterTypes = method.getParameterTypes();
-          checkArgument(
+          checkArgument(// 只能有一个参数
               parameterTypes.length == 1,
               "Method %s has @Subscribe annotation but has %s parameters. "
                   + "Subscriber methods must have exactly 1 parameter.",
               method,
               parameterTypes.length);
 
-          checkArgument(
+          checkArgument(//  不能是原始类型
               !parameterTypes[0].isPrimitive(),
               "@Subscribe method %s's parameter is %s. "
                   + "Subscriber methods cannot accept primitives. "
