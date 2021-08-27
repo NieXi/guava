@@ -223,7 +223,7 @@ public final class CacheBuilder<K, V> {
 
     @Override
     public int weigh(Object key, Object value) {
-      return 1;
+      return 1;// 默认用的 OneWeigher 权重是 1
     }
   }
 
@@ -970,7 +970,7 @@ public final class CacheBuilder<K, V> {
   public <K1 extends K, V1 extends V> LoadingCache<K1, V1> build(
       CacheLoader<? super K1, V1> loader) {
     checkWeightWithWeigher();
-    return new LocalCache.LocalLoadingCache<>(this, loader);
+    return new LocalCache.LocalLoadingCache<>(this, loader);// LoadingCache 方式，创建 LocalLoadingCache，get方法不是必须指定 loader
   }
 
   /**
@@ -989,7 +989,7 @@ public final class CacheBuilder<K, V> {
   public <K1 extends K, V1 extends V> Cache<K1, V1> build() {
     checkWeightWithWeigher();
     checkNonLoadingCache();
-    return new LocalCache.LocalManualCache<>(this);
+    return new LocalCache.LocalManualCache<>(this);// Cache 方式，创建 LocalManualCache，get方法的时候必须指定 loader
   }
 
   private void checkNonLoadingCache() {
