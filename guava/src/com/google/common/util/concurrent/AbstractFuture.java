@@ -707,14 +707,14 @@ public abstract class AbstractFuture<V> extends InternalFutureFailureAccess
     // A corollary to all that is that we don't need to check isDone inside the loop because if we
     // get into the loop we know that we weren't done when we entered and therefore we aren't under
     // an obligation to execute 'immediately'.
-    if (!isDone()) {
+    if (!isDone()) {// 没有执行完，则排队
       Listener oldHead = listeners;
       if (oldHead != Listener.TOMBSTONE) {
         Listener newNode = new Listener(listener, executor);
         do {
           newNode.next = oldHead;
           if (ATOMIC_HELPER.casListeners(this, oldHead, newNode)) {
-            return;
+            return;// 入队成功直接返回
           }
           oldHead = listeners; // re-read
         } while (oldHead != Listener.TOMBSTONE);
@@ -722,7 +722,7 @@ public abstract class AbstractFuture<V> extends InternalFutureFailureAccess
     }
     // If we get here then the Listener TOMBSTONE was set, which means the future is done, call
     // the listener.
-    executeListener(listener, executor);
+    executeListener(listener, executor);// 任务执行完成，则直接通过传入的线程池执行封装好的另一个任务
   }
 
   /**
@@ -959,9 +959,9 @@ public abstract class AbstractFuture<V> extends InternalFutureFailureAccess
       // also be recursive and create StackOverflowErrors
       future.afterDone();
       // push the current set of listeners onto next
-      next = future.clearListeners(next);
+      next = future.clearListeners(next);// 取出监听器链表
       future = null;
-      while (next != null) {
+      while (next != null) {// 循环处理
         Listener curr = next;
         next = next.next;
         Runnable task = curr.task;
@@ -981,7 +981,7 @@ public abstract class AbstractFuture<V> extends InternalFutureFailureAccess
           }
           // other wise the future we were trying to set is already done.
         } else {
-          executeListener(task, curr.executor);
+          executeListener(task, curr.executor);// 取出监听器，用监听器中的线程池执行执行的任务
         }
       }
       break;

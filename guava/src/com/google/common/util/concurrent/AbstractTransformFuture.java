@@ -46,8 +46,8 @@ abstract class AbstractTransformFuture<
   static <I extends @Nullable Object, O extends @Nullable Object> ListenableFuture<O> create(
       ListenableFuture<I> input, Function<? super I, ? extends O> function, Executor executor) {
     checkNotNull(function);
-    TransformFuture<I, O> output = new TransformFuture<>(input, function);
-    input.addListener(output, rejectionPropagatingExecutor(executor, output));
+    TransformFuture<I, O> output = new TransformFuture<>(input, function);// 将上一个future 和 function 封装成一个任务
+    input.addListener(output, rejectionPropagatingExecutor(executor, output));// 给 future 添加监听器
     return output;
   }
 
