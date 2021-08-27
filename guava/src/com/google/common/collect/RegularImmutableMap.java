@@ -92,6 +92,7 @@ final class RegularImmutableMap<K, V> extends ImmutableMap<K, V> {
     int tableSize = Hashing.closedTableSize(n, MAX_LOAD_FACTOR);
     ImmutableMapEntry<K, V>[] table = createEntryArray(tableSize);
     int mask = tableSize - 1;
+    // TODO xi233 哈希冲突 ImmutableMap
     for (int entryIndex = 0; entryIndex < n; entryIndex++) {
       Entry<K, V> entry = entryArray[entryIndex];
       K key = entry.getKey();

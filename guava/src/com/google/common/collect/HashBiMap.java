@@ -85,7 +85,7 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
   }
 
   private static final class BiEntry<K, V> extends ImmutableEntry<K, V> {
-    final int keyHash;
+    final int keyHash; // 存了 key 和 value 的 hash
     final int valueHash;
 
     // All BiEntry instances are strongly reachable from owning HashBiMap through
@@ -94,10 +94,10 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
     // Using @Weak is necessary to avoid retain-cycles between BiEntry instances on iOS,
     // which would cause memory leaks when non-empty HashBiMap with cyclic BiEntry
     // instances is deallocated.
-    @Nullable BiEntry<K, V> nextInKToVBucket;
+    @Nullable BiEntry<K, V> nextInKToVBucket;  // 哈希桶中的 entry 链表，k->v v->k
     @Weak @Nullable BiEntry<K, V> nextInVToKBucket;
 
-    @Weak @Nullable BiEntry<K, V> nextInKeyInsertionOrder;
+    @Weak @Nullable BiEntry<K, V> nextInKeyInsertionOrder; // 维护插入顺序
     @Weak @Nullable BiEntry<K, V> prevInKeyInsertionOrder;
 
     BiEntry(K key, int keyHash, V value, int valueHash) {
@@ -109,10 +109,10 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
 
   private static final double LOAD_FACTOR = 1.0;
 
-  private transient BiEntry<K, V>[] hashTableKToV;
-  private transient BiEntry<K, V>[] hashTableVToK;
-  @Weak private transient @Nullable BiEntry<K, V> firstInKeyInsertionOrder;
-  @Weak private transient @Nullable BiEntry<K, V> lastInKeyInsertionOrder;
+  private transient BiEntry<K, V>[] hashTableKToV; // key -> value
+  private transient BiEntry<K, V>[] hashTableVToK; // value -> key
+  @Weak private transient @Nullable BiEntry<K, V> firstInKeyInsertionOrder; // 记录插入顺序的双向链表，头指针
+  @Weak private transient @Nullable BiEntry<K, V> lastInKeyInsertionOrder;// 尾指针
   private transient int size;
   private transient int mask;
   private transient int modCount;
@@ -123,7 +123,7 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
 
   private void init(int expectedSize) {
     checkNonnegative(expectedSize, "expectedSize");
-    int tableSize = Hashing.closedTableSize(expectedSize, LOAD_FACTOR);
+    int tableSize = Hashing.closedTableSize(expectedSize, LOAD_FACTOR);// 计算哈希🪣个数
     this.hashTableKToV = createTable(tableSize);
     this.hashTableVToK = createTable(tableSize);
     this.firstInKeyInsertionOrder = null;
@@ -133,26 +133,26 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
     this.modCount = 0;
   }
 
-  /**
+  /** 注释很清楚：从哈希桶的链表中，删除 k2v，v2k 两个 entry
    * Finds and removes {@code entry} from the bucket linked lists in both the key-to-value direction
    * and the value-to-key direction.
    */
   private void delete(BiEntry<K, V> entry) {
     int keyBucket = entry.keyHash & mask;
     BiEntry<K, V> prevBucketEntry = null;
-    for (BiEntry<K, V> bucketEntry = hashTableKToV[keyBucket];
+    for (BiEntry<K, V> bucketEntry = hashTableKToV[keyBucket];// 遍历桶里面的链表，找到要删除的 entry
         true;
         bucketEntry = bucketEntry.nextInKToVBucket) {
-      if (bucketEntry == entry) {
-        if (prevBucketEntry == null) {
-          hashTableKToV[keyBucket] = entry.nextInKToVBucket;
-        } else {
+      if (bucketEntry == entry) {// 找到了要删除的 entry
+        if (prevBucketEntry == null) {// 前驱为空，说明要删除的 entry 是链表中的第一个
+          hashTableKToV[keyBucket] = entry.nextInKToVBucket; // 直接把要删除的 entry 的后继节点，放到哈希表中即可
+        } else {// 从链表中剥离待删除节点：把前驱节点的后继节点，指向待删除节点的后继节点
           prevBucketEntry.nextInKToVBucket = entry.nextInKToVBucket;
         }
         break;
       }
-      prevBucketEntry = bucketEntry;
-    }
+      prevBucketEntry = bucketEntry;// 没找到时，更新前驱节点，继续遍历
+    }// 循环结束后，要么没有待删除节点，要么就删掉了
 
     int valueBucket = entry.valueHash & mask;
     prevBucketEntry = null;
@@ -168,15 +168,15 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
         break;
       }
       prevBucketEntry = bucketEntry;
-    }
+    }// 同上，删除 valueEntry
 
-    if (entry.prevInKeyInsertionOrder == null) {
-      firstInKeyInsertionOrder = entry.nextInKeyInsertionOrder;
-    } else {
+    if (entry.prevInKeyInsertionOrder == null) {// 说明删除节点是插入链表的头节点
+      firstInKeyInsertionOrder = entry.nextInKeyInsertionOrder;// 删除节点的后继节点设为插入链表头节点
+    } else {// 删除节点不是插入链表头节点，从插入链表中删除
       entry.prevInKeyInsertionOrder.nextInKeyInsertionOrder = entry.nextInKeyInsertionOrder;
     }
 
-    if (entry.nextInKeyInsertionOrder == null) {
+    if (entry.nextInKeyInsertionOrder == null) {// 同上，更新插入链表的尾指针
       lastInKeyInsertionOrder = entry.prevInKeyInsertionOrder;
     } else {
       entry.nextInKeyInsertionOrder.prevInKeyInsertionOrder = entry.prevInKeyInsertionOrder;
@@ -188,14 +188,14 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
 
   private void insert(BiEntry<K, V> entry, @Nullable BiEntry<K, V> oldEntryForKey) {
     int keyBucket = entry.keyHash & mask;
-    entry.nextInKToVBucket = hashTableKToV[keyBucket];
-    hashTableKToV[keyBucket] = entry;
+    entry.nextInKToVBucket = hashTableKToV[keyBucket];// 1. 为空 2. 不为空，当前节点放在链表头
+    hashTableKToV[keyBucket] = entry;// 链表放入桶中
 
-    int valueBucket = entry.valueHash & mask;
+    int valueBucket = entry.valueHash & mask;// 同上
     entry.nextInVToKBucket = hashTableVToK[valueBucket];
     hashTableVToK[valueBucket] = entry;
-
-    if (oldEntryForKey == null) {
+    // 更新插入链表的头尾指针
+    if (oldEntryForKey == null) {// 新插入的 entry
       entry.prevInKeyInsertionOrder = lastInKeyInsertionOrder;
       entry.nextInKeyInsertionOrder = null;
       if (lastInKeyInsertionOrder == null) {
@@ -204,7 +204,7 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
         lastInKeyInsertionOrder.nextInKeyInsertionOrder = entry;
       }
       lastInKeyInsertionOrder = entry;
-    } else {
+    } else {// 更新的 entry
       entry.prevInKeyInsertionOrder = oldEntryForKey.prevInKeyInsertionOrder;
       if (entry.prevInKeyInsertionOrder == null) {
         firstInKeyInsertionOrder = entry;
@@ -224,14 +224,14 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
   }
 
   private BiEntry<K, V> seekByKey(@Nullable Object key, int keyHash) {
-    for (BiEntry<K, V> entry = hashTableKToV[keyHash & mask];
+    for (BiEntry<K, V> entry = hashTableKToV[keyHash & mask]; // 遍历这个桶上的 entry 链表
         entry != null;
         entry = entry.nextInKToVBucket) {
-      if (keyHash == entry.keyHash && Objects.equal(key, entry.key)) {
+      if (keyHash == entry.keyHash && Objects.equal(key, entry.key)) {// hash 不相同，则两个元素一定不相同，hash 相同，有可能是哈希碰撞，所以判断一下 equals 方法
         return entry;
       }
     }
-    return null;
+    return null;// 1. 桶里面是空的 2. 桶里面不为空：a. 找到了一个和原来的 key 相同的 entry，b. 遍历到链表尾部，没有发现相同 entry
   }
 
   private BiEntry<K, V> seekByValue(@Nullable Object value, int valueHash) {
@@ -280,30 +280,30 @@ public final class HashBiMap<K, V> extends IteratorBasedAbstractMap<K, V>
     int keyHash = smearedHash(key);
     int valueHash = smearedHash(value);
 
-    BiEntry<K, V> oldEntryForKey = seekByKey(key, keyHash);
+    BiEntry<K, V> oldEntryForKey = seekByKey(key, keyHash);// 返回的 keyEntry ，一定相同，
     if (oldEntryForKey != null
         && valueHash == oldEntryForKey.valueHash
-        && Objects.equal(value, oldEntryForKey.value)) {
+        && Objects.equal(value, oldEntryForKey.value)) { // key 和 value 都相同，说明 put 的是相同的 entry
       return value;
-    }
+    }// 1. map 中没有这个 key，oldEntryForKey = null 2. map 中有 key，但是 value 不同，说明 put 了新的 value，要看 force 参数是否允许更新
 
     BiEntry<K, V> oldEntryForValue = seekByValue(value, valueHash);
-    if (oldEntryForValue != null) {
-      if (force) {
-        delete(oldEntryForValue);
+    if (oldEntryForValue != null) {// 不为空，说明找到 value 了，那 key 就也是存在的，不会出现 seekByKey 找不到 key 的情况
+      if (force) { // 是否强制更新
+        delete(oldEntryForValue);// 删除旧的 value
       } else {
         throw new IllegalArgumentException("value already present: " + value);
       }
-    }
+    }// 1. map 中没有这个 valueEntry 2. map 中有个 valueEntry
 
     BiEntry<K, V> newEntry = new BiEntry<>(key, keyHash, value, valueHash);
-    if (oldEntryForKey != null) {
+    if (oldEntryForKey != null) {// 走到这里则是更新的情况
       delete(oldEntryForKey);
       insert(newEntry, oldEntryForKey);
       oldEntryForKey.prevInKeyInsertionOrder = null;
       oldEntryForKey.nextInKeyInsertionOrder = null;
       return oldEntryForKey.value;
-    } else {
+    } else {// 插入新的 entry
       insert(newEntry, null);
       rehashIfNecessary();
       return null;

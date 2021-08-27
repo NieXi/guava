@@ -59,12 +59,12 @@ final class Hashing {
   static int closedTableSize(int expectedEntries, double loadFactor) {
     // Get the recommended table size.
     // Round down to the nearest power of 2.
-    expectedEntries = Math.max(expectedEntries, 2);
-    int tableSize = Integer.highestOneBit(expectedEntries);
+    expectedEntries = Math.max(expectedEntries, 2); // 排除掉 0 和 1
+    int tableSize = Integer.highestOneBit(expectedEntries);// 然后取最高的 1 位代表的数值
     // Check to make sure that we will not exceed the maximum load factor.
-    if (expectedEntries > (int) (loadFactor * tableSize)) {
-      tableSize <<= 1;
-      return (tableSize > 0) ? tableSize : MAX_TABLE_SIZE;
+    if (expectedEntries > (int) (loadFactor * tableSize)) {// 超过了负载因子的比例
+      tableSize <<= 1;// 翻倍
+      return (tableSize > 0) ? tableSize : MAX_TABLE_SIZE;// 小于 0 说明溢出了
     }
     return tableSize;
   }

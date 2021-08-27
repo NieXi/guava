@@ -236,6 +236,6 @@ abstract class AbstractTable<R, C, V> implements Table<R, C, V> {
   /** Returns the string representation {@code rowMap().toString()}. */
   @Override
   public String toString() {
-    return rowMap().toString();
+    return rowMap().toString();// debug 的时候，会调用 toString 方法，会初始化 rowMap
   }
 }

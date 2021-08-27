@@ -164,7 +164,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
    */
   private static <E> ImmutableSet<E> constructUnknownDuplication(int n, Object... elements) {
     // Guess the size is "halfway between" all duplicates and no duplicates, on a log scale.
-    return construct(
+    return construct( // 确定大小
         n,
         Math.max(
             ImmutableCollection.Builder.DEFAULT_INITIAL_CAPACITY,
@@ -233,10 +233,10 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
       return copyOfEnumSet((EnumSet) elements);
     }
     Object[] array = elements.toArray();
-    if (elements instanceof Set) {
+    if (elements instanceof Set) { // 如果是 set 类型，那么从语义上讲，是没有重复数据的
       // assume probably no duplicates (though it might be using different equality semantics)
       return construct(array.length, array.length, array);
-    } else {
+    } else {// 不是 set ，那么就会有重复数据
       return constructUnknownDuplication(array.length, array);
     }
   }
@@ -635,7 +635,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
   // If the set has this many elements, it will "max out" the table size
   private static final int CUTOFF = (int) (MAX_TABLE_SIZE * DESIRED_LOAD_FACTOR);
 
-  /**
+  /**  哈希表大小，采用的是开放地址法，线性探测
    * Returns an array size suitable for the backing array of a hash table that uses open addressing
    * with linear probing in its implementation. The returned size is the smallest power of two that
    * can hold setSize elements with the desired load factor. Always returns at least setSize + 2.
@@ -735,7 +735,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
     return false;
   }
 
-  /**
+  /**  tableSize 是 2 的 n 次方，所以这个参数值是：13 * n，
    * If more than this many consecutive positions are filled in a table of the specified size,
    * report probable hash flooding. ({@link #hashFloodingDetected} may also report hash flooding if
    * fewer consecutive positions are filled; see that method for details.)
@@ -744,7 +744,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
     return MAX_RUN_MULTIPLIER * IntMath.log2(tableSize, RoundingMode.UNNECESSARY);
   }
 
-  /**
+  /** // 直接确定大小，在 distinct 和 expectedCapacity 之间
    * Default implementation of the guts of ImmutableSet.Builder, creating an open-addressed hash
    * table and deduplicating elements as they come, so it only allocates O(max(distinct,
    * expectedCapacity)) rather than O(calls to add).
@@ -776,7 +776,7 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
 
     void ensureTableCapacity(int minCapacity) {
       if (minCapacity > expandTableThreshold && hashTable.length < MAX_TABLE_SIZE) {
-        int newTableSize = hashTable.length * 2;
+        int newTableSize = hashTable.length * 2;// 翻倍
         hashTable = rebuildHashTable(newTableSize, dedupedElements, distinct);
         maxRunBeforeFallback = maxRunBeforeFallback(newTableSize);
         expandTableThreshold = (int) (DESIRED_LOAD_FACTOR * newTableSize);
@@ -788,21 +788,21 @@ public abstract class ImmutableSet<E> extends ImmutableCollection<E> implements 
       checkNotNull(e);
       int eHash = e.hashCode();
       int i0 = Hashing.smear(eHash);
-      int mask = hashTable.length - 1;
-      for (int i = i0; i - i0 < maxRunBeforeFallback; i++) {
+      int mask = hashTable.length - 1;//
+      for (int i = i0; i - i0 < maxRunBeforeFallback; i++) {// 哈希冲突了，就往后移动一位
         int index = i & mask;
         Object tableEntry = hashTable[index];
         if (tableEntry == null) {
           addDedupedElement(e);
           hashTable[index] = e;
           hashCode += eHash;
-          ensureTableCapacity(distinct); // rebuilds table if necessary
+          ensureTableCapacity(distinct); // rebuilds table if necessary  扩容
           return this;
         } else if (tableEntry.equals(e)) { // not a new element, ignore
           return this;
         }
       }
-      // we fell out of the loop due to a long run; fall back to JDK impl
+      // we fell out of the loop due to a long run; fall back to JDK impl  循环多次，仍然没有解决哈希冲突，就退化成 JDK hashSet
       return new JdkBackedSetBuilderImpl<E>(this).add(e);
     }
 

@@ -186,7 +186,7 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
       collection = createCollection(key);
       if (collection.add(value)) {
         totalSize++;
-        map.put(key, collection);
+        map.put(key, collection);// 创建集合
         return true;
       } else {
         throw new AssertionError("New Collection violated the Collection spec");

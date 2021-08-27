@@ -280,7 +280,7 @@ class StandardTable<R, C, V> extends AbstractTable<R, C, V> implements Serializa
   public Map<C, V> row(R rowKey) {
     return new Row(rowKey);
   }
-
+  // 行，一行有多列，一列一个值：1R:nC:nV
   class Row extends IteratorBasedAbstractMap<C, V> {
     final R rowKey;
 
@@ -288,7 +288,7 @@ class StandardTable<R, C, V> extends AbstractTable<R, C, V> implements Serializa
       this.rowKey = checkNotNull(rowKey);
     }
 
-    @Nullable Map<C, V> backingRowMap;
+    @Nullable Map<C, V> backingRowMap;// 内层的 map，<C,V>
 
     Map<C, V> backingRowMap() {
       return (backingRowMap == null || (backingRowMap.isEmpty() && backingMap.containsKey(rowKey)))
@@ -297,7 +297,7 @@ class StandardTable<R, C, V> extends AbstractTable<R, C, V> implements Serializa
     }
 
     Map<C, V> computeBackingRowMap() {
-      return backingMap.get(rowKey);
+      return backingMap.get(rowKey); // 取的是 backingMap 的 value
     }
 
     // Call this every time we perform a removal.
@@ -421,7 +421,7 @@ class StandardTable<R, C, V> extends AbstractTable<R, C, V> implements Serializa
   public Map<R, V> column(C columnKey) {
     return new Column(columnKey);
   }
-
+  // 列，实际上列并不存在，读写都是转换成行来处理的：columnKey 是确定的
   private class Column extends ViewCachingAbstractMap<R, V> {
     final C columnKey;
 

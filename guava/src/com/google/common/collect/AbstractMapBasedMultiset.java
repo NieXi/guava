@@ -45,7 +45,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  */
 @GwtCompatible(emulated = true)
 abstract class AbstractMapBasedMultiset<E> extends AbstractMultiset<E> implements Serializable {
-  // TODO(lowasser): consider overhauling this back to Map<E, Integer>
+  // TODO(lowasser): consider overhauling this back to Map<E, Integer>  改成 integer
   private transient Map<E, Count> backingMap;
 
   /*
@@ -247,7 +247,7 @@ abstract class AbstractMapBasedMultiset<E> extends AbstractMultiset<E> implement
    */
   @CanIgnoreReturnValue
   @Override
-  public int add(@Nullable E element, int occurrences) {
+  public int add(@Nullable E element, int occurrences) {// 添加元素
     if (occurrences == 0) {
       return count(element);
     }

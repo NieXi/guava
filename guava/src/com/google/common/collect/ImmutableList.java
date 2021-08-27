@@ -394,7 +394,7 @@ public abstract class ImmutableList<E> extends ImmutableCollection<E>
   public UnmodifiableListIterator<E> listIterator(int index) {
     return new AbstractIndexedListIterator<E>(size(), index) {
       @Override
-      protected E get(int index) {
+      protected E get(int index) {// xi233: 因为集合不可变，所以没有并发检查
         return ImmutableList.this.get(index);
       }
     };
