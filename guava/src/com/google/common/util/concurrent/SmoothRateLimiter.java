@@ -143,7 +143,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
    * This implements the following function where coldInterval = coldFactor * stableInterval.
    *
    * <pre>
-   *          ^ throttling
+   *          ^ throttling 限流
    *          |
    *    cold  +                  /
    * interval |                 /.
@@ -276,7 +276,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
    */
   static final class SmoothBursty extends SmoothRateLimiter {
     /** The work (permits) of how many seconds can be saved up if this RateLimiter is unused? */
-    final double maxBurstSeconds;
+    final double maxBurstSeconds;// 用来计算没有请求进来的时候，可以预存多少令牌
 
     SmoothBursty(SleepingStopwatch stopwatch, double maxBurstSeconds) {
       super(stopwatch);
@@ -286,7 +286,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
     @Override
     void doSetRate(double permitsPerSecond, double stableIntervalMicros) {
       double oldMaxPermits = this.maxPermits;
-      maxPermits = maxBurstSeconds * permitsPerSecond;
+      maxPermits = maxBurstSeconds * permitsPerSecond; // 令牌桶容量
       if (oldMaxPermits == Double.POSITIVE_INFINITY) {
         // if we don't special-case this, we would get storedPermits == NaN, below
         storedPermits = maxPermits;
@@ -333,10 +333,10 @@ abstract class SmoothRateLimiter extends RateLimiter {
 
   @Override
   final void doSetRate(double permitsPerSecond, long nowMicros) {
-    resync(nowMicros);
-    double stableIntervalMicros = SECONDS.toMicros(1L) / permitsPerSecond;
-    this.stableIntervalMicros = stableIntervalMicros;
-    doSetRate(permitsPerSecond, stableIntervalMicros);
+    resync(nowMicros);// 更新令牌数量
+    double stableIntervalMicros = SECONDS.toMicros(1L) / permitsPerSecond;// 发令牌间隔
+    this.stableIntervalMicros = stableIntervalMicros;// resync 使用的时候是 0
+    doSetRate(permitsPerSecond, stableIntervalMicros);// 调用子类方法
   }
 
   abstract void doSetRate(double permitsPerSecond, double stableIntervalMicros);
@@ -354,16 +354,16 @@ abstract class SmoothRateLimiter extends RateLimiter {
   @Override
   final long reserveEarliestAvailable(int requiredPermits, long nowMicros) {
     resync(nowMicros);
-    long returnValue = nextFreeTicketMicros;
-    double storedPermitsToSpend = min(requiredPermits, this.storedPermits);
-    double freshPermits = requiredPermits - storedPermitsToSpend;
-    long waitMicros =
-        storedPermitsToWaitTime(this.storedPermits, storedPermitsToSpend)
+    long returnValue = nextFreeTicketMicros; // 下次发令牌的时间
+    double storedPermitsToSpend = min(requiredPermits, this.storedPermits);// 当前可消费的令牌数
+    double freshPermits = requiredPermits - storedPermitsToSpend; // 还需要的令牌数
+    long waitMicros = // 补足还需要的令牌数所需的时间
+        storedPermitsToWaitTime(this.storedPermits, storedPermitsToSpend)// 消耗已有令牌所需时间，固定速率的是 0，预热模式的？
             + (long) (freshPermits * stableIntervalMicros);
 
-    this.nextFreeTicketMicros = LongMath.saturatedAdd(nextFreeTicketMicros, waitMicros);
-    this.storedPermits -= storedPermitsToSpend;
-    return returnValue;
+    this.nextFreeTicketMicros = LongMath.saturatedAdd(nextFreeTicketMicros, waitMicros);// 更新下次发令牌的时间
+    this.storedPermits -= storedPermitsToSpend; // 减去桶中已消耗的令牌数
+    return returnValue;// 返回的是上一次请求计算出来的需要等待的时间戳，上一次欠的债，这一次来还，rate limiter 可以预消费令牌的原因
   }
 
   /**
@@ -381,12 +381,12 @@ abstract class SmoothRateLimiter extends RateLimiter {
   abstract double coolDownIntervalMicros();
 
   /** Updates {@code storedPermits} and {@code nextFreeTicketMicros} based on the current time. */
-  void resync(long nowMicros) {
+  void resync(long nowMicros) {// 模拟匀速放入令牌的过程，取的时候计算
     // if nextFreeTicket is in the past, resync to now
     if (nowMicros > nextFreeTicketMicros) {
-      double newPermits = (nowMicros - nextFreeTicketMicros) / coolDownIntervalMicros();
-      storedPermits = min(maxPermits, storedPermits + newPermits);
-      nextFreeTicketMicros = nowMicros;
+      double newPermits = (nowMicros - nextFreeTicketMicros) / coolDownIntervalMicros();// 上次发放到现在，根据速率算出这段时间应该发放的令牌数 coolDownIntervalMicros()获取发令牌间隔时间，分固定和预热两种方式
+      storedPermits = min(maxPermits, storedPermits + newPermits);// 存储的令牌数量
+      nextFreeTicketMicros = nowMicros;// 更新发令牌时间
     }
   }
 }
